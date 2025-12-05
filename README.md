@@ -3,14 +3,7 @@
 # TODO
 
 
-
-## Step 4: Outlier Removal (DBSCAN) 
-- Aplicar DBSCAN para identificar e remover outliers.
-- Objetivo: evitar que valores extremos distorçam os clusters.
-
----
-
-## Step 5: Definição de Perspectivas
+## Step 5: Definição de Perspectivas (rever)
 - Criar subconjuntos de features com o pbjetivo de analisar diferentes dimensões do cliente separadamente.
 
 ---
