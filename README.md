@@ -30,7 +30,10 @@
 - Calcular médias por cluster e visualizar com heatmaps.
 - Objetivo: interpretar os clusters e dar significado de negócio.
 
-- apostar na feature engineering (rui e lex) a stora deu ideia de features sazonais, mas fazer features sempre contínuas e nao discretas
-- refazer perspetivas com as novas features
-- fazer soms, Gaussian mixture models, tuning
-- pca
+- apostar na feature engineering (rui e lex) a stora deu ideia de features sazonais, mas fazer features sempre contínuas e nao discretas (ate dia 21)
+- refazer perspetivas com as novas features (bruna) (ate dia 22) todos
+- fazer soms (bruna) (ate dia 21)
+- refazer conclusoes
+- Gaussian mixture models e tuning (alex) (ate dia 22)
+- pca, UMAP, t SNE (rui)
+- marketing approach
