@@ -6,6 +6,7 @@ import seaborn as sns
 from sklearn.base import clone
 from sklearn.cluster import KMeans, HDBSCAN, DBSCAN, AgglomerativeClustering, MeanShift, estimate_bandwidth
 from sklearn.metrics import silhouette_score, silhouette_samples
+from sklearn.neighbors import NearestNeighbors
 
 #Clustering metrics (SS, SSB, SSW, R2)
 
@@ -187,6 +188,121 @@ def visualize_silhouette_graf(df, range_clusters=[2, 3, 4, 5, 6]):
 
     plt.tight_layout()
     plt.show()
+
+def plot_k_distance(df, features, k=None):
+    """
+    Plots the k-distance graph to help find the optimal EPS for DBSCAN.
+    """
+    data = df[features]
+    
+    # Automatic logic for k if not provided: 2 * dimensions
+    if k is None:
+        k = 2 * len(features)
+    
+    # 1. Fit Nearest Neighbors
+    neighbors = NearestNeighbors(n_neighbors=k)
+    neighbors_fit = neighbors.fit(data)
+    distances, indices = neighbors_fit.kneighbors(data)
+    
+    # 2. Sort distances
+    # We take the distance to the k-th neighbor (column k-1)
+    sorted_distances = np.sort(distances[:, k-1], axis=0)
+    
+    # 3. Plot
+    plt.figure(figsize=(10, 6))
+    plt.plot(sorted_distances, color='darkgreen', linewidth=2)
+    plt.title(f"k-Distance Plot (k={k}) for EPS estimation")
+    plt.xlabel("Points sorted by distance")
+    plt.ylabel("k-distance (EPS candidate)")
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.show()
+    
+    return k # Returns k so you know what min_samples to use later
+
+def get_dbscan(df, features, eps=1.8, min_samples=7):
+    
+    # 1. Executar o Modelo
+    dbscan = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1)
+    labels = dbscan.fit_predict(df[features])
+    
+    # 2. Calcular Estatísticas
+    # Contar quantos clientes há em cada label
+    distribution = pd.Series(labels).value_counts().sort_index()
+    
+    # O número de clusters é o total de labels únicos, ignorando o -1 (ruído)
+    n_clusters = len(distribution) - (1 if -1 in distribution.index else 0)
+    
+    n_noise = distribution.get(-1, 0)
+    perc_noise = (n_noise / len(df)) * 100
+    
+    # 3. Print para leitura imediata
+    print(f"Clusters found: {n_clusters}")
+    print(f"Noise: {n_noise} customers ({perc_noise:.2f}%)")
+    print("Cluster Distribution:")
+    print(distribution)
+    
+    # 4. Calcular R2 (Opcional, mas útil)
+    try:
+        temp_df = df[features].copy()
+        temp_df['labels_temp'] = labels
+        # Se tiveres a tua função 'func' importada:
+        r2 = get_rsq(temp_df, features, 'labels_temp')
+        print(f"R2 Score: {r2:.4f}")
+    except:
+        pass
+        
+    
+    # RETORNAR AS 3 COISAS QUE PEDISTE
+    return labels, n_clusters, distribution
+
+def get_hdbscan(df, features, min_cluster_size=200, min_samples=None, selection_method='eom'):
+    """
+    Executa o HDBSCAN e retorna:
+    1. Labels (Array)
+    2. Número de Clusters (Int)
+    3. Distribuição dos Clientes (Series)
+    """
+    
+    # Se min_samples não for definido, por defeito o HDBSCAN usa igual ao min_cluster_size, 
+    # mas aqui deixamos explícito como None para ele decidir ou o utilizador definir
+    
+    # 1. Executar o Modelo
+    hdb = HDBSCAN(
+        min_cluster_size=min_cluster_size,
+        min_samples=min_samples,
+        metric='euclidean',
+        cluster_selection_method=selection_method,
+        n_jobs=-1 # Usa todos os processadores
+    )
+    
+    labels = hdb.fit_predict(df[features])
+    
+    # 2. Calcular Estatísticas
+    distribution = pd.Series(labels).value_counts().sort_index()
+    
+    # O número de clusters ignora o label -1 (ruído)
+    n_clusters = len(distribution) - (1 if -1 in distribution.index else 0)
+    
+    n_noise = distribution.get(-1, 0)
+    perc_noise = (n_noise / len(df)) * 100
+    
+    print(f"Clusters found: {n_clusters}")
+    print(f"Noise: {n_noise} customers ({perc_noise:.2f}%)")
+    print("Cluster distribution:")
+    print(distribution)
+    
+    # 3. Calcular R2
+    try:
+        temp_df = df.copy()
+        temp_df['labels_temp'] = labels
+        
+        # Chama a tua função auxiliar get_rsq (que já deve estar neste ficheiro)
+        r2 = get_rsq(temp_df, features, 'labels_temp')
+        print(f"R2 Score: {r2:.4f}")
+    except Exception as e:
+        pass
+    
+    return labels, n_clusters, distribution
 
 def get_meanshift(df, features):
     # quantiles to test
