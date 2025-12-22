@@ -1,13 +1,22 @@
 import pandas as pd
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import matplotlib as mpl
+import matplotlib.colors as mpl_colors
 import seaborn as sns
 from sklearn.base import clone
+from matplotlib.patches import RegularPolygon
 from sklearn.cluster import KMeans, HDBSCAN, DBSCAN, AgglomerativeClustering, MeanShift, estimate_bandwidth
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score, silhouette_samples
 from sklearn.neighbors import NearestNeighbors
 from sklearn.mixture import GaussianMixture
+import matplotlib.patches as mpatches
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from minisom import MiniSom
+import scipy.cluster.hierarchy as sch
+
 
 #Clustering metrics (SS, SSB, SSW, R2)
 
@@ -478,3 +487,214 @@ def get_model_metrics(df, labels, model_name, perspective):
         'Davies-Bouldin': round(db, 3),           # Lower is better
         'Calinski-Harabasz': round(ch, 1)         # Higher is better
     }
+
+
+def plot_hexagons(som_matrix, som, ax, label='', cmap=None):
+    """
+    Draws a hexagonal grid based on the SOM matrix values.
+    Adapted to use 'ax' directly for easier subplot management.
+    """
+    som_x, som_y = som.get_weights().shape[:2]
+    
+    # Normalize values to [0,1] for color mapping
+    colornorm = mpl_colors.Normalize(vmin=np.min(som_matrix), vmax=np.max(som_matrix))
+    
+    # Loop through neurons
+    for i in range(som_x):
+        for j in range(som_y):
+            # Get Euclidean coordinates for the hexagon center
+            wx, wy = som.convert_map_to_euclidean((i, j))
+            
+            # Determine color
+            if cmap is None:
+                color = np.clip(som_matrix[i, j], 0, 1) # Grayscale if no cmap
+            else:
+                color = cmap(colornorm(som_matrix[i, j]))
+            
+            # Draw Hexagon
+            hex = RegularPolygon(
+                (wx, wy), 
+                numVertices=6, 
+                radius=np.sqrt(1/3),
+                facecolor=color, 
+                edgecolor='white', 
+                linewidth=0.5
+            )
+            ax.add_patch(hex)
+    
+    # Visual adjustments
+    ax.set_title(label, fontsize=10)
+    
+    ax.set_xlim(-1, som_x + 1)  # Adiciona +1 ou +2
+    ax.set_ylim(-1, som_y + 1)
+    
+    ax.set_aspect('equal') # Isto é crucial para não ficarem "ovais"
+    ax.axis('off')
+    # Add Colorbar (Small bar on the right)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+
+    if cmap is not None:
+        sm = cm.ScalarMappable(norm=colornorm, cmap=cmap) 
+        sm.set_array([]) 
+        plt.colorbar(sm, cax=cax)
+    else:
+        cax.axis('off')
+
+    return ax
+
+    return ax
+
+def plot_som_diagnostics(som, data, figsize=(16, 7)):
+    """
+    Plots the Hits Map (Population) and U-Matrix (Distances) side-by-side.
+    
+    Parameters:
+    - som: The trained MiniSom object.
+    - data: The dataframe/numpy array used for training (to calculate hits).
+    - figsize: Tuple for figure dimensions.
+    """
+    
+    # 1. Calculate the Matrices
+    frequencies = som.activation_response(data) # Hits map
+    u_matrix = som.distance_map()               # U-Matrix
+    
+    # 2. Initialize Figure
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
+    
+    # --- LEFT PLOT: HITS MAP (Cluster Density) ---
+    # Shows how many customers are in each hexagon
+    plot_hexagons(frequencies, som, ax1, label='Hits Map (Sample Density)', cmap=cm.Greens)
+    
+    # Add text annotations (Counts) for the Hits Map
+    for i in range(frequencies.shape[0]):
+        for j in range(frequencies.shape[1]):
+            count = int(frequencies[i, j])
+            if count > 0: # Only write if there are customers
+                wx, wy = som.convert_map_to_euclidean((i, j))
+                # Dynamic text color: White for dark cells, Black for light cells
+                text_color = 'white' if count > np.max(frequencies) * 0.5 else 'black'
+                ax1.text(wx, wy, str(count), ha='center', va='center', fontsize=9, color=text_color, fontweight='bold')
+
+    # --- RIGHT PLOT: U-MATRIX (Cluster Separation) ---
+    # Shows the distance between neurons (Dark Red = Wall/Barrier, Blue = Valley/Cluster Center)
+    plot_hexagons(u_matrix, som, ax2, label='U-Matrix (Neighbor Distances)', cmap=cm.RdYlBu_r)
+    
+    plt.tight_layout()
+    plt.show()
+
+def run_som_kmeans(som, data_values, n_clusters=4):
+    """
+    Applies K-Means clustering on the SOM weights and assigns labels to customers.
+    
+    Parameters:
+    - som: Trained MiniSom object
+    - data_values: Numpy array of the data used for training (e.g., customer[features].values)
+    - n_clusters: Number of clusters to create
+    
+    Returns:
+    - final_labels: List of cluster assignments for each customer
+    - matrix_km: The grid of cluster labels (for plotting)
+    """
+    
+    # 1. Prepare SOM weights
+    weights = som.get_weights()
+    x_dim, y_dim, n_features = weights.shape
+    weights_flat = weights.reshape(-1, n_features)
+    
+    # 2. Run K-Means
+    kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=42)
+    labels_km = kmeans.fit_predict(weights_flat)
+    
+    # 3. Reshape for visualization
+    matrix_km = labels_km.reshape(x_dim, y_dim)
+    
+    # 4. Plot the K-Means Map
+    fig, ax = plt.subplots(figsize=(8, 7))
+    plot_hexagons(
+        matrix_km, 
+        som, 
+        ax, 
+        label=f'SOM + K-Means Clustering (k={n_clusters})', 
+        cmap=cm.Spectral_r
+    )
+    plt.show()
+    
+    # 5. Assign labels to original customers
+    # We find the winner neuron for each customer and assign its cluster label
+    final_labels = []
+    for x in data_values:
+        w = som.winner(x)
+        cluster_label = matrix_km[w[0], w[1]]
+        final_labels.append(cluster_label)
+        
+    return final_labels
+
+
+def run_som_hierarchical(som, n_clusters=5, cmap=cm.Spectral_r, figsize=(20, 8)):
+    """
+    Executa o clustering hierárquico nos pesos do SOM e mostra
+    o Dendrograma e o Mapa resultante lado a lado.
+    """
+    
+    # 1. Preparar os pesos do SOM
+    weights = som.get_weights()
+    x_dim, y_dim, n_features = weights.shape
+    weights_flat = weights.reshape(-1, n_features)
+    
+    linkage_matrix = sch.linkage(weights_flat, method='ward')
+    if n_clusters > 1:
+        dist_x = linkage_matrix[-n_clusters, 2]
+        dist_y = linkage_matrix[-(n_clusters-1), 2]
+        cut_height = (dist_x + dist_y) / 2
+    else:
+        cut_height = 0 # Default fallback
+    
+    # 2. Criar a figura com 2 subplots lado a lado
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
+    
+    # --- GRÁFICO DA ESQUERDA: DENDROGRAMA ---
+    # Calcular a matriz de ligação (linkage)
+    linkage_matrix = sch.linkage(weights_flat, method='ward')
+    
+    # Definir o eixo atual como o da esquerda (ax1) para o dendrograma desenhar lá
+    plt.sca(ax1) 
+    
+    # Desenhar o dendrograma
+    # no_labels=True esconde os números dos neurónios no eixo X para ficar mais limpo
+    dend = sch.dendrogram(
+        linkage_matrix, 
+        no_labels=True, 
+        color_threshold=cut_height, # colors
+        above_threshold_color='grey' # color for the trunk above the cut
+    )
+    
+    ax1.set_title("Dendrogram of SOM Neurons (Ward Linkage)", fontsize=14)
+    ax1.set_xlabel('Neurons (Hexagons)')
+    ax1.set_ylabel('Euclidean Distance')
+    ax1.grid(axis='y', linestyle='--', alpha=0.7)
+
+    # Isto é uma aproximação visual baseada na altura das últimas fusões
+    if n_clusters > 1:
+        # Encontrar as alturas das últimas k-1 fusões para estimar a linha de corte
+        last_merges = linkage_matrix[-(n_clusters-1):, 2]
+        cut_height = (last_merges[0] + linkage_matrix[-n_clusters, 2]) / 2
+        ax1.axhline(y=cut_height, c='grey', lw=2, linestyle='--', label=f'Approx. Cut for k={n_clusters}')
+        ax1.legend()
+
+    # --- GRÁFICO DA DIREITA: MAPA HIERÁRQUICO ---
+    hc = AgglomerativeClustering(n_clusters=n_clusters, linkage='ward')
+    labels_hc = hc.fit_predict(weights_flat)
+    matrix_hc = labels_hc.reshape(x_dim, y_dim)
+    
+    # Usar a função plot_hexagons no eixo da direita (ax2)
+    plot_hexagons(
+        matrix_hc, 
+        som, 
+        ax2, 
+        label=f'SOM + Hierarchical Clustering (k={n_clusters})', 
+        cmap=cm.Spectral_r
+    )
+    
+    plt.tight_layout()
+    plt.show()
