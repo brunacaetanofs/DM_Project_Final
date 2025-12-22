@@ -3,16 +3,15 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-import matplotlib as mpl
 import matplotlib.colors as mpl_colors
 import seaborn as sns
+from scipy.stats import skew, kurtosis
 from sklearn.base import clone
 from matplotlib.patches import RegularPolygon
 from sklearn.cluster import KMeans, HDBSCAN, DBSCAN, AgglomerativeClustering, MeanShift, estimate_bandwidth
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score, silhouette_samples
 from sklearn.neighbors import NearestNeighbors
 from sklearn.mixture import GaussianMixture
-import matplotlib.patches as mpatches
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from minisom import MiniSom
 import scipy.cluster.hierarchy as sch
@@ -698,3 +697,86 @@ def run_som_hierarchical(som, n_clusters=5, cmap=cm.Spectral_r, figsize=(20, 8))
     
     plt.tight_layout()
     plt.show()
+
+
+
+def analyze_feature(feature: pd.Series, feature_name: str):
+
+    sns.set_style("whitegrid")
+    plt.rcParams['axes.titlesize'] = 14
+    plt.rcParams['axes.labelsize'] = 12
+    plt.rcParams['xtick.labelsize'] = 10
+    plt.rcParams['ytick.labelsize'] = 10
+    plt.rcParams['grid.alpha'] = 0.3
+
+    # ---- Descriptive Statistics  ----
+    desc = feature.describe()
+    n_missing = feature.isna().sum()
+    skewness = skew(feature.dropna())
+    kurt = kurtosis(feature.dropna())
+
+    print(f"--- Summary of {feature_name} ---")
+    print(desc)
+    print(f"Missing values: {n_missing}")
+    print(f"Skewness: {skewness:.2f}")
+    print(f"Kurtosis: {kurt:.2f}")
+
+    spotify_green = '#1DB954'
+
+    # ---- Plots ----
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+    # Histograma + KDE
+    sns.histplot(feature, kde=True, ax=axes[0], color=spotify_green)
+    axes[0].set_title(f'{feature_name} Distribution')
+
+    # Boxplot
+    sns.boxplot(x=feature, ax=axes[1], color=spotify_green)
+    axes[1].set_title(f'{feature_name} Boxplot')
+
+    plt.tight_layout()
+    plt.show()
+
+from scipy.stats import linregress
+
+
+def cumulative_customer(col, flight):
+    total = flight.groupby("Loyalty#")[col].sum().reset_index()
+    return total
+
+
+def calculate_seasonality(df):
+    df = df.copy()
+    def get_season(month):
+        if month in [12, 1, 2]: return 'Winter'
+        elif month in [3, 4, 5]: return 'Spring'
+        elif month in [6, 7, 8]: return 'Summer'
+        else: return 'Fall'
+
+    df['Season'] = df['Month'].apply(get_season)
+
+    # 2. Calcular Ratios por Estação (Summer_Ratio, etc.)
+    season_counts = df.pivot_table(index='Loyalty#', columns='Season', values='NumFlights', aggfunc='sum', fill_value=0)
+    total = season_counts.sum(axis=1).replace(0, 1) # Evitar divisão por zero
+    season_ratios = season_counts.div(total, axis=0).add_suffix('_Ratio').reset_index()
+
+    # 3. Índice de Sazonalidade (Desvio Padrão dos meses)
+    monthly = df.pivot_table(index='Loyalty#', columns='Month', values='NumFlights', aggfunc='sum', fill_value=0)
+    # Se desvio padrão é alto, cliente é muito sazonal
+    season_index = (monthly.std(axis=1) / (monthly.mean(axis=1) + 0.001)).reset_index(name='Seasonality_Index')
+
+    # Juntar as duas partes de sazonalidade
+    return season_ratios.merge(season_index, on='Loyalty#')
+
+def calculate_trend(df):
+    # Função auxiliar para calcular declive (slope)
+    def get_slope(series):
+        if len(series) < 2: return 0
+        # Cria uma linha de tendência (y=mx+b) e devolve o m (slope)
+        return linregress(np.arange(len(series)), series.values)[0]
+
+    df_sorted = df.sort_values(['Loyalty#', 'YearMonthDate'])
+
+
+    trends = df_sorted.groupby('Loyalty#')['NumFlights'].apply(get_slope).reset_index(name='Flight_Trend_Slope')
+    return trends
