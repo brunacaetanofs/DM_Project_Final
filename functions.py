@@ -337,7 +337,7 @@ def get_n_components(df, features, cov_types=("diag", "full")):
     Determine the optimal number of components for Gaussian Mixture Models
     using the Akaike Information Criterion (AIC) and Bayesian Information Criterion (BIC).
     """
-    n_components = range(1, 21)
+    n_components = range(1, 11)
 
     for cov in cov_types:
         bic_values = []
