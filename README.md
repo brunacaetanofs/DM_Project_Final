@@ -6,7 +6,7 @@
 - refazer conclusoes das tecnicas de clustering: soms e mean shift (BRUNA),  gaussian (ALEX)
 - refazer merge dos clusters (TODOS)
 - refazer profiling (TODOS)
-- pca, UMAP, t SNE (RUI)
+- UMAP(RUI)
 - marketing approach (BRUNA)
 - fazer bónus 1 - financial (ALEX)
 - fazer bónus 2 - dashboard (RUI)
