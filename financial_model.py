@@ -4,8 +4,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-df_fin = pd.read_csv('customer_with_clusters.csv')
+df_fin = pd.read_csv('customer_with_clusters.csv') # this data includes the clustering labels and number of flights
+df_fin['NumFlights'] = df_fin['NumFlights']/6 # annualize the number of flights (data is for 6 years)
+df_fin = df_fin.dropna(subset=['merged_labels']) # remove the outliers that were not clustered
 
+df_fin['merged_labels'] = df_fin['merged_labels'].astype(int) 
 
 # ==============================================================================
 # 1. FINANCIAL PROFILING DEFINITION
@@ -26,8 +29,8 @@ def get_financial_profile(cluster_id):
         return pd.Series({
             'Avg_Ticket': 250,      # Solid value, frequent flying
             'Margin': 0.15,         # Good margin
-            'Retention_Years': 5,   # Long-term retention
-            'Mkt_Cost': 5           # Low cost (already familiar with brand)
+            'Retention_Years': 6,   # Long-term retention
+            'Mkt_Cost': 45             # Low cost (already familiar with brand)
         })
     
     # Cluster 1: "Emerging Momentum" (High Potential)
@@ -36,7 +39,7 @@ def get_financial_profile(cluster_id):
             'Avg_Ticket': 180,      # Still growing
             'Margin': 0.12, 
             'Retention_Years': 4,   # High potential to stay
-            'Mkt_Cost': 10          # Worth investing to convert to Core
+            'Mkt_Cost': 65          # Worth investing to convert to Core
         })
     
     # Cluster 4: "Steady Loyalists" (Low Risk)
@@ -44,8 +47,8 @@ def get_financial_profile(cluster_id):
         return pd.Series({
             'Avg_Ticket': 150,      # Average value
             'Margin': 0.10, 
-            'Retention_Years': 6,   # Very high retention
-            'Mkt_Cost': 3           # Low maintenance
+            'Retention_Years': 8,   # Very high retention
+            'Mkt_Cost': 35           # Low maintenance
         })
 
     # Cluster 0: "Once-a-Year Traditionalists" (Seasonal)
@@ -54,7 +57,7 @@ def get_financial_profile(cluster_id):
             'Avg_Ticket': 300,      # Expensive tickets (Peak Season travel)
             'Margin': 0.18,         # High margin due to seasonal pricing
             'Retention_Years': 2,   # Intermittent behavior
-            'Mkt_Cost': 8           # Cost to reactivate during specific seasons
+            'Mkt_Cost': 20           # Cost to reactivate during specific seasons
         })
     
     # Cluster 3: "Low-Engagement Drifters" (Low Value)
@@ -63,7 +66,7 @@ def get_financial_profile(cluster_id):
             'Avg_Ticket': 80,       # Cheap/short flights
             'Margin': 0.05,         # Minimal margin
             'Retention_Years': 1,   # High churn risk
-            'Mkt_Cost': 1           # Do not invest
+            'Mkt_Cost': 0           # Do not invest
         })
 
 # Apply the profile to each customer
@@ -115,9 +118,9 @@ fig, axes = plt.subplots(1, 3, figsize=(20, 6))
 
 # --- PLOT 1: Average CLV ---
 sns.barplot(x=summary_table.index, y='CLV', data=summary_table, ax=axes[0], palette='viridis')
-axes[0].set_title('Customer Lifetime Value (CLV) by Segment', fontsize=14)
+axes[0].set_title('CLV by Segment', fontsize=14)
 axes[0].set_ylabel('Avg CLV (€)')
-axes[0].set_xlabel('Cluster (0=Seas, 1=Emerg, 2=Core, 3=Drift, 4=Loyal)')
+axes[0].set_xlabel('Cluster (0=Season, 1=Emergent, 2=Core, 3=Drift, 4=Loyal)')
 
 # --- PLOT 2: Campaign ROI ---
 # Color logic: Red for negative ROI, Green for positive
@@ -156,6 +159,27 @@ if target_cluster in roi_analysis.index:
     # Shade area for visual impact
     axes[2].fill_between(months, 0, cash_flow, where=[c > 0 for c in cash_flow], color='green', alpha=0.1)
     axes[2].fill_between(months, 0, cash_flow, where=[c < 0 for c in cash_flow], color='red', alpha=0.1)
+
+# ==============================================================================
+# 5. GLOBAL COST-BENEFIT ANALYSIS (TOTAL STRATEGY)
+# ==============================================================================
+
+# Vamos somar apenas os clusters onde decidimos investir (Ignoramos o Cluster 3 se o custo for 0)
+# Ou somamos tudo se o custo do Cluster 3 for 0, não afeta a matemática.
+
+total_investment = roi_analysis['Mkt_Cost'].sum()
+total_gain = roi_analysis['Profit_Gain'].sum()
+net_benefit = total_gain - total_investment
+global_roi = (net_benefit / total_investment) * 100
+
+print("\n================================================")
+print("   FINAL COST-BENEFIT ANALYSIS (GLOBAL)   ")
+print("================================================")
+print(f"Total Investment Required:   € {total_investment:,.2f}")
+print(f"Total Projected Profit Gain: € {total_gain:,.2f}")
+print(f"Net Benefit (Profit - Cost): € {net_benefit:,.2f}")
+print(f"Global Project ROI:          {global_roi:.2f}%")
+print("================================================")
 
 plt.tight_layout()
 plt.show()
