@@ -1,25 +1,24 @@
 # TODO - entrega final dia 3 jan
 
 ## Component 1: Jupyter Notebook (5 points) ATÉ DIA 25 DEZ
-- meter grafico das tabelas R^2 e ver do tuning para cada perspetiva (ALEX)
-- refazer conclusoes das tecnicas de clustering:  gaussian (ALEX)
-- rever merge dos clusters (TODOS)
-- rever profiling (TODOS)
-- UMAP, melhorar t-SNE (RUI)
-- fazer bónus 1 - financial (ALEX)
+- fazer subplot no profiling das categorical (RUI)
+- tirar minhoca t-SNE (RUI)
 - fazer bónus 2 - dashboard (RUI)
 - marketing approach (BRUNA)
 - passar funcoes para o ficheiro functions.py (RUI)
 
 ## Component 2: Report (35 points) ATÉ DIA 28 DEZ
-PESSOA 1
+PESSOA 1 (RUI)
 - Introduction
 - Methodology
+- Implementation and demonstration of interactive visualization (max 5-minute video + code hosted on
+GitHub)
 
-PESSOA 2
+PESSOA 2 (ALEX)
 - Results & Validation
+- Financial Impact Modeling
 
-PESSOA 3
+PESSOA 3 (BRUNA)
 - Strategic Recommendations
 - Conclusion
 - Executive Summary
