@@ -4,7 +4,6 @@
 - fazer subplot no profiling das categorical (RUI)
 - tirar minhoca t-SNE (RUI)
 - fazer bónus 2 - dashboard (RUI)
-- marketing approach (BRUNA)
 - passar funcoes para o ficheiro functions.py (RUI)
 
 ## Component 2: Report (35 points) ATÉ DIA 28 DEZ
@@ -19,9 +18,8 @@ PESSOA 2 (ALEX)
 - Financial Impact Modeling
 
 PESSOA 3 (BRUNA)
-- Strategic Recommendations
 - Conclusion
 - Executive Summary
-- Annexes
+- Annexes (ver o que falta)
 
 ## Component 3: Video Presentation (20 points) 28 DEZ ATÉ DIA 30 JAN
