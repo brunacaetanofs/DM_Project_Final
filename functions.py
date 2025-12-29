@@ -993,3 +993,14 @@ def plot_pca_clusters(df,label_col,pc1_col='pca_1',pc2_col='pca_2',var_explained
 
     plt.tight_layout()
     plt.show()
+
+def get_ss_variables(df):
+    """Get the SS for each variable"""
+    ss_vars = df.var() * (df.count() - 1)
+    return ss_vars
+
+def r2_variables(df, labels):
+    """Get the R² for each variable"""
+    sst_vars = get_ss_variables(df)
+    ssw_vars = np.sum(df.groupby(labels).apply(get_ss_variables))
+    return 1 - ssw_vars/sst_vars
