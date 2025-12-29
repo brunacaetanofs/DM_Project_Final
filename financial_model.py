@@ -161,11 +161,9 @@ if target_cluster in roi_analysis.index:
     axes[2].fill_between(months, 0, cash_flow, where=[c < 0 for c in cash_flow], color='red', alpha=0.1)
 
 # ==============================================================================
-# 5. GLOBAL COST-BENEFIT ANALYSIS (TOTAL STRATEGY)
+# 4. GLOBAL COST-BENEFIT ANALYSIS (TOTAL STRATEGY)
 # ==============================================================================
 
-# Vamos somar apenas os clusters onde decidimos investir (Ignoramos o Cluster 3 se o custo for 0)
-# Ou somamos tudo se o custo do Cluster 3 for 0, não afeta a matemática.
 
 total_investment = roi_analysis['Mkt_Cost'].sum()
 total_gain = roi_analysis['Profit_Gain'].sum()
