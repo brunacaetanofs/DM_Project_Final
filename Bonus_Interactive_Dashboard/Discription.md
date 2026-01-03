@@ -3,7 +3,6 @@
 This document provides the necessary instructions to run the **Bonus Interactive Customer Cluster Dashboard** and details its main features and architecture.
 
 LINK to demonstration of interactive visualization: https://youtu.be/FDur9wqpiYw
----
 
 ## Project Structure
 
